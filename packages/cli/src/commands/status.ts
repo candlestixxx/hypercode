@@ -31,14 +31,20 @@ async function fetchTRPC(host: string, path: string): Promise<any> {
 }
 
 async function getRealStatus(host: string): Promise<StatusData | null> {
-  const [startupStatus, mcpStatus, health, goHealth] = await Promise.all([
+  const [startupStatus, mcpStatus, health, goHealth, memStats, sessData] = await Promise.all([
     fetchTRPC(host, '/trpc/startupStatus'),
     fetchTRPC(host, '/trpc/mcp.getStatus'),
     fetchTRPC(host, '/health'),
     (async () => { try { const r = await fetch('http://127.0.0.1:4300/health', { signal: AbortSignal.timeout(2000) }); return r.ok ? await r.json() : null; } catch { return null; } })(),
+    (async () => { try { const r = await fetch('http://127.0.0.1:4300/api/agent-memory/stats', { signal: AbortSignal.timeout(2000) }); return r.ok ? (await r.json()).data : null; } catch { return null; } })(),
+    (async () => { try { const r = await fetch('http://127.0.0.1:4300/api/sessions', { signal: AbortSignal.timeout(2000) }); return r.ok ? (await r.json()).data : null; } catch { return null; } })(),
   ]);
 
   if (!health) return null;
+
+  // Detect providers from env
+  const providerKeys = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY', 'OPENROUTER_API_KEY', 'XAI_API_KEY', 'GEMINI_API_KEY'];
+  const configuredProviders = providerKeys.filter(k => process.env[k]).length;
 
   return {
     version: health.name === '@borg/core' ? 'running' : 'unknown',
@@ -53,9 +59,9 @@ async function getRealStatus(host: string): Promise<StatusData | null> {
       tools: mcpStatus?.toolCount ?? 0,
       connected: mcpStatus?.connectedCount ?? 0,
     },
-    sessions: { active: 0, paused: 0, total: 0 },
-    memory: { entries: 0, backends: 1 },
-    providers: { configured: 0, active: 0 },
+    sessions: { active: 0, paused: 0, total: Array.isArray(sessData) ? sessData.length : 0 },
+    memory: { entries: memStats?.total ?? 0, backends: 1 },
+    providers: { configured: configuredProviders, active: configuredProviders },
     goSidecar: goHealth ? { ok: goHealth.ok, version: goHealth.version, uptimeSec: goHealth.uptimeSec } : undefined,
   };
 }
@@ -131,8 +137,8 @@ Examples:
           ['MCP Router', mcpStatus, mcpDetails],
           ['Memory', real.memory.entries > 0 ? chalk.green(`● ${real.memory.entries} entries`) : chalk.dim('○ Empty'), `Backends: ${real.memory.backends}`],
           ['Agents', chalk.dim('○ Idle'), 'Running: 0 | Available: 20+'],
-          ['Sessions', chalk.dim('○ None'), `Active: ${real.sessions.active} | Paused: ${real.sessions.paused}`],
-          ['Providers', real.providers.configured > 0 ? chalk.yellow(`◐ ${real.providers.configured}`) : chalk.dim('○ None'), `Active: ${real.providers.active}`],
+          ['Sessions', real.sessions.total > 0 ? chalk.yellow(`◐ ${real.sessions.total} discovered`) : chalk.dim('○ None'), `Active: ${real.sessions.active} | Discovered: ${real.sessions.total}`],
+          ['Providers', real.providers.configured > 0 ? chalk.green(`● ${real.providers.configured} configured`) : chalk.dim('○ None'), `Active: ${real.providers.active}`],
           ['Dashboard', chalk.dim('○ Stopped'), 'http://localhost:3000'],
           ['Go Sidecar', real.goSidecar ? chalk.green(`● Running (${real.goSidecar.version})`) : chalk.dim('○ Stopped'), 'http://127.0.0.1:4300 | 543 routes'],
         );
