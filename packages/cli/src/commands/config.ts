@@ -297,7 +297,38 @@ Examples:
 		.option("--local", "Initialize local .borg/ config in current directory")
 		.action(async (opts) => {
 			const chalk = (await import("chalk")).default;
+			const { mkdirSync, existsSync, writeFileSync } = await import("fs");
+			const { resolve, dirname } = await import("path");
+			const { homedir } = await import("os");
+			const home = homedir();
+
 			const scope = opts.global ? "global (~/.borg/)" : "local (.borg/)";
+			const baseDir = opts.global ? resolve(home, ".borg") : resolve(process.cwd(), ".borg");
+
+			// Create directory
+			mkdirSync(baseDir, { recursive: true });
+
+			// Create config.jsonc if it doesn't exist
+			const configPath = resolve(baseDir, "config.jsonc");
+			if (!existsSync(configPath)) {
+				const defaultConfig = {
+					server: { port: 4000, host: "0.0.0.0", logLevel: "info" },
+					mcp: { progressiveDisclosure: true, semanticSearch: true, codeMode: false },
+					providers: {},
+					fallback: { chain: [], strategy: "quota-aware" },
+				};
+				writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2) + "\n");
+			}
+
+			// Create secrets placeholder
+			const secretsPath = resolve(baseDir, "secrets.jsonc");
+			if (!existsSync(secretsPath)) {
+				writeFileSync(secretsPath, "{}\n");
+			}
+
 			console.log(chalk.green(`  ✓ Configuration initialized (${scope})`));
+			console.log(chalk.dim(`    Config:   ${configPath}`));
+			console.log(chalk.dim(`    Secrets:  ${secretsPath}`));
+			console.log(chalk.dim(`    Data:     ${baseDir}`));
 		});
 }
