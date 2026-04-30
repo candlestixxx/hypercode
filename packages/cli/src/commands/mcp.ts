@@ -967,6 +967,39 @@ Supported clients:
     });
 
   mcp
+    .command('stop-all')
+    .description('Stop all spawned MCP servers')
+    .action(async () => {
+      const chalk = (await import('chalk')).default;
+      console.log(chalk.bold.cyan('\n  MCP Stop All — Killing spawned servers\n'));
+
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const pidDir = path.join(process.env.HOME ?? '', '.borg', 'mcp-pids');
+        const pidFiles = fs.readdirSync(pidDir).filter(f => f.endsWith('.pid'));
+
+        let killed = 0, alreadyDead = 0;
+        for (const pf of pidFiles) {
+          const name = pf.replace('.pid', '');
+          try {
+            const pid = parseInt(fs.readFileSync(path.join(pidDir, pf), 'utf8').trim());
+            process.kill(pid, 'SIGTERM');
+            killed++;
+            console.log(chalk.green(`  ✓ ${name} (PID ${pid}) killed`));
+          } catch {
+            alreadyDead++;
+            console.log(chalk.dim(`  ○ ${name} already dead`));
+          }
+          try { fs.unlinkSync(path.join(pidDir, pf)); } catch {}
+        }
+        console.log(chalk.dim(`\n  ${killed} killed, ${alreadyDead} already dead, ${pidFiles.length} total`));
+      } catch (e: any) {
+        console.log(chalk.red(`  ✗ Error: ${e.message}`));
+      }
+    });
+
+  mcp
     .command('fleet')
     .description('Show spawned MCP server fleet status')
     .action(async () => {
