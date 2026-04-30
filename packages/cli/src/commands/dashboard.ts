@@ -133,6 +133,14 @@ Examples:
       }
 
       console.log(chalk.dim('\n  Repository: https://github.com/robertpelloni/borg'));
-      console.log(chalk.dim('  License: MIT\n'));
+      console.log(chalk.dim('  License: MIT'));
+
+      // Quick-start hints
+      console.log(chalk.bold.cyan('\n  Quick Start:'));
+      console.log(chalk.dim('    borg start                # Launch the control plane'));
+      console.log(chalk.dim('    borg info                 # System overview'));
+      console.log(chalk.dim('    borg provider test openai  # Verify API keys'));
+      console.log(chalk.dim('    borg catalog search memory # Browse MCP servers'));
+      console.log(chalk.dim('    borg dashboard --dev       # Launch Web UI\n'));
     });
 }
