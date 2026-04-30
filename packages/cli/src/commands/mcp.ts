@@ -318,16 +318,24 @@ Examples:
       // Query the running server for tools
       let tools: any[] = [];
       try {
-        const query = opts.search ?? '';
-        const input = encodeURIComponent(JSON.stringify({ query, limit: 100 }));
-        const res = await fetch(`http://127.0.0.1:4000/trpc/mcp.searchTools?input=${input}`, { signal: AbortSignal.timeout(5000) });
-        if (res.ok) {
-          const json = await res.json();
-          tools = json?.result?.data?.tools ?? json?.result?.data ?? [];
+        if (opts.search) {
+          const input = encodeURIComponent(JSON.stringify({ query: opts.search, limit: 100 }));
+          const res = await fetch(`http://127.0.0.1:4000/trpc/mcp.searchTools?input=${input}`, { signal: AbortSignal.timeout(5000) });
+          if (res.ok) {
+            const json = await res.json();
+            tools = json?.result?.data?.tools ?? json?.result?.data ?? [];
+          }
+        } else {
+          // Full listing — use mcp.listTools which has all 1302 tools
+          const res = await fetch('http://127.0.0.1:4000/trpc/mcp.listTools', { signal: AbortSignal.timeout(5000) });
+          if (res.ok) {
+            const json = await res.json();
+            tools = json?.result?.data ?? [];
+          }
         }
       } catch {}
 
-      if (opts.server) tools = tools.filter((t: any) => t.serverName === opts.server);
+      if (opts.server) tools = tools.filter((t: any) => (t.server ?? t.serverName) === opts.server);
       if (opts.namespace) tools = tools.filter((t: any) => (t.tags ?? []).includes(opts.namespace));
 
       if (isJson) {
@@ -350,9 +358,10 @@ Examples:
       });
 
       for (const t of tools.slice(0, 50)) {
-        const status = t.loaded ? chalk.green('● Loaded') : chalk.dim('○ Available');
+        const status = t.loaded ? chalk.green('● Loaded') : t.serverStatus === 'connected' ? chalk.green('● Connected') : chalk.dim('○ Available');
         const priority = t.priority ?? t.rank ?? '—';
-        table.push([t.name, t.serverName ?? '—', status, String(priority)]);
+        const server = t.server ?? t.serverName ?? t.serverDisplayName ?? '—';
+        table.push([t.name, server, status, String(priority)]);
       }
 
       const label = opts.search ? `search: "${opts.search}"` : 'all';
