@@ -7,9 +7,9 @@ const BORG = 'node packages/cli/dist/cli/src/index.js';
 
 let passed = 0, failed = 0;
 
-function test(name, cmd, expectFn) {
+function test(name, cmd, expectFn, timeout = 10000) {
   try {
-    const out = execSync(`${BORG} ${cmd}`, { timeout: 10000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const out = execSync(`${BORG} ${cmd}`, { timeout, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
     if (expectFn(out)) {
       console.log(`  ✓ ${name}`);
       passed++;
@@ -62,6 +62,8 @@ function test(name, cmd, expectFn) {
   test('catalog stats', 'catalog stats', o => o.includes('Catalog') || o.includes('340'));
 
   test('catalog search', 'catalog search memory', o => o.includes('memory') || o.includes('results'));
+
+  test('provider test', 'provider test openai', o => o.includes('openai') || o.includes('authenticated'), 15000);
 
   console.log(`\n  ${passed} passed, ${failed} failed\n`);
   process.exit(failed > 0 ? 1 : 0);
