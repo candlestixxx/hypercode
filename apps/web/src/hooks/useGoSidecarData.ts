@@ -23,19 +23,17 @@ const GO_PROXY_PREFIX = '/api/go';
 /**
  * Build a URL for the Go sidecar.
  *
- * When a direct sidecar URL is configured, we use it as-is (path already
- * includes /api/...).  When going through the Next.js catch-all proxy at
- * /api/go/[...path], the proxy handler prepends /api/ to the captured path
- * segments, so we must strip the leading /api here to avoid a double
- * /api/api/... in the final URL.
+ * When a direct sidecar URL is configured (NEXT_PUBLIC_GO_SIDECAR_URL),
+ * paths are used as-is.  When going through the Next.js catch-all proxy
+ * at /api/go/[...path], the proxy passes the path verbatim to the
+ * sidecar, so /api/go/health → sidecar /health,
+ * /api/go/api/mcp/status → sidecar /api/mcp/status, etc.
  */
 function sidecarUrl(path: string): string {
   if (GO_SIDECAR_BASE) {
     return `${GO_SIDECAR_BASE}${path}`;
   }
-  // Strip leading /api so the proxy doesn't double it
-  const stripped = path.replace(/^\/api\//, '/');
-  return `${GO_PROXY_PREFIX}${stripped}`;
+  return `${GO_PROXY_PREFIX}${path}`;
 }
 
 /** Fetch JSON from the Go sidecar with timeout. */
@@ -240,6 +238,7 @@ export function useGoSidecarDashboard(pollIntervalMs = 5000): GoSidecarDashboard
       billingStatus,
       sessions,
       healthData,
+      healthFallback,
     ] = await Promise.all([
       fetchSidecar<GoMCPStatus>('/api/mcp/status'),
       fetchSidecar<GoStartupStatus>('/api/startup/status'),
@@ -247,7 +246,11 @@ export function useGoSidecarDashboard(pollIntervalMs = 5000): GoSidecarDashboard
       fetchSidecar<any>('/api/billing/status'),
       fetchSidecar<{ count: number; sessions: GoSessionSummary[] }>('/api/native/session/list'),
       fetchSidecar<any>('/api/health'),
+      fetchSidecar<any>('/health'),
     ]);
+
+    // Use /api/health result, fall back to /health (older binaries)
+    const effectiveHealth = healthData ?? healthFallback;
 
     // Extract providers from billing status
     let providers: GoProviderSummary[] = [];
@@ -257,7 +260,7 @@ export function useGoSidecarDashboard(pollIntervalMs = 5000): GoSidecarDashboard
       fallbackChain = billingStatus.fallbackChain ?? [];
     }
 
-    const connected = mcpStatus !== null || startupStatus !== null || healthData !== null;
+    const connected = mcpStatus !== null || startupStatus !== null || effectiveHealth !== null;
 
     setData({
       mcpStatus,
@@ -266,7 +269,7 @@ export function useGoSidecarDashboard(pollIntervalMs = 5000): GoSidecarDashboard
       providers,
       fallbackChain,
       sessions: (sessions as any)?.sessions ?? sessions ?? [],
-      goVersion: healthData?.version ?? null,
+      goVersion: effectiveHealth?.version ?? null,
       connected,
       lastFetchedAt: Date.now(),
     });
@@ -299,7 +302,11 @@ export function useGoSidecarConnectivity(pollIntervalMs = 10000): {
 
     async function check() {
       try {
-        const health = await fetchSidecar<any>('/api/health');
+        // Try /api/health first (newer binaries), fall back to /health (older)
+        let health = await fetchSidecar<any>('/api/health');
+        if (!health) {
+          health = await fetchSidecar<any>('/health');
+        }
         if (!cancelled) {
           setState({
             connected: health !== null,
