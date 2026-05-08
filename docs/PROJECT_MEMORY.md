@@ -2,7 +2,7 @@
 
 # Super AI Plugin (Borg) - Comprehensive Architectural Memory
 
-Based on a detailed analysis of 16,735 Borg-researched bookmarks, the project's architecture, patterns, and decisions are centered around **14 High-Conviction Features**. This document serves as the global memory for these architectural decisions and implementation strategies.
+Based on a detailed analysis of the repository's history, the massive 16,735-item Borg-researched bookmark database, and the recovery processes undertaken during this session, the project's architecture, patterns, and decisions are centered around **14 High-Conviction Features**. This document serves as the global memory for these architectural decisions and implementation strategies.
 
 ## 1. Dynamic Tool Discovery & Registry (ToolRAG)
 **The Problem:** The MCP ecosystem has over 25,000 tools. Static loading exhausts the LLM context window (imposing a 32% token overhead penalty).
@@ -20,7 +20,7 @@ Based on a detailed analysis of 16,735 Borg-researched bookmarks, the project's 
 ## 3. Progressive Context Optimization
 **The Problem:** Token bloat is the #1 pain point, degrading reasoning and increasing costs.
 **The Converging Solution:** Schema elimination (Code Mode), Intelligent Chunking (cAST), Context Compaction (Union-Find), and Progressive Disclosure.
-*   **Borg Implementation:** Store "compressed fingerprints" (category + 3 key tags + innovation score) instead of raw text. Hydrate full context only when explicitly requested by the agent.
+*   **Borg Implementation:** Store "compressed fingerprints" (category + 3 key tags + innovation score) instead of raw HTML text. Hydrate full context only when explicitly requested by the agent. Implemented "Fit Markdown" filtering to strip out boilerplate HTML tags (`<nav>`, `<header>`, `<footer>`, `<aside>`).
 
 ## 4. MCP Ecosystem Intelligence (Registry + Package Manager)
 **The Problem:** Thousands of unverified MCP servers exist with massive injection risks and inconsistent auth.
@@ -40,7 +40,7 @@ Based on a detailed analysis of 16,735 Borg-researched bookmarks, the project's 
 ## 7. Self-Improving Research Pipeline
 **The Problem:** Static extraction scripts degrade over time with no feedback loop to learn from errors.
 **The Converging Solution:** Telemetry tracking, self-editing memory blocks, and background "Dreaming" consolidation.
-*   **Borg Implementation:** Tag extraction quality in the database. Auto-re-process low-quality items using stronger models. Implement a reasoning "flight recorder" to trace why specific routing/extraction decisions failed.
+*   **Borg Implementation:** Tag extraction quality in the database. Auto-re-process low-quality items using stronger models. Implement a reasoning "flight recorder" to trace why specific routing/extraction decisions failed. (Phase 1 Garbage Filter & Flight Recorder already implemented).
 
 ## 8. Agent Communication Protocols (A2A / AG-UI / ACP)
 **The Problem:** The agent ecosystem is fragmented into siloed communication models.
@@ -68,7 +68,7 @@ Based on a detailed analysis of 16,735 Borg-researched bookmarks, the project's 
 ## 12. Model Intelligence & Cost Optimization
 **The Problem:** Single-model routing is inefficient; 10x cost variations exist.
 **The Converging Solution:** Complexity-based tiered routing.
-*   **Borg Implementation:** Route simple URLs (Reddit) to a local 1.2B SLM, and complex tasks (GitHub repos) to frontier models. Track model performance ELO and auto-demote degrading models.
+*   **Borg Implementation:** The `WaterfallRouter` implements tiered routing: Simple URLs (Reddit, YCombinator) route to a local 1.2B SLM, and complex tasks (GitHub repos) route to frontier models. Track model performance ELO and auto-demote degrading models.
 
 ## 13. Browser Automation & Web Interaction
 **The Problem:** Naive HTTP fetching fails on SPAs, captchas, and auth walls.
@@ -81,4 +81,14 @@ Based on a detailed analysis of 16,735 Borg-researched bookmarks, the project's 
 *   **Borg Implementation:** Version the database schema using git-commit-like operations. Implement closed-loop self-healing (if extraction quality is poor, automatically checkout a new worktree and re-process with a different model).
 
 ---
+
+## Architectural Meta-Patterns & Rules of Engagement
+
+During this session, we established a strict recovery protocol. The codebase previously suffered from "Slop at Scale" where blind text-replacement scripts structurally corrupted the Go workspace (deleting closing braces, duplicating imports, and breaking interfaces). The definitive pattern for modifying this project is:
+
+1.  **Do not use blind `sed` or line-number deletions across multiple files.**
+2.  **Use AST-aware tooling or surgically precise Python scripts** that check surrounding context before mutating code.
+3.  **Ensure a clean `go build ./...` state** before committing or merging feature branches.
+4.  **Single Source of Truth:** `ROADMAP.md`, `CHANGELOG.md`, `VISION.md`, and `docs/PROJECT_MEMORY.md` heavily dictate immediate priorities.
+
 *This memory is continuously synced with `ROADMAP.md` and `VISION.md` to ensure the project architecture converges on these 14 principles.*
