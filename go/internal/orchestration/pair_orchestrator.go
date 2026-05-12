@@ -57,11 +57,15 @@ type PairSessionResult struct {
 }
 
 type PairOrchestrator struct {
-	mu      sync.RWMutex
-	Squad   []SquadMember
-	History []string
-	State   SessionState
-	Task    string
+	mu          sync.RWMutex
+	Squad       []SquadMember
+	History     []string
+	State       SessionState
+	Task        string
+	CurrentRole PairRole
+	Bus         interface {
+		EmitEvent(eventType string, source string, payload interface{})
+	}
 }
 
 func NewPairOrchestrator() *PairOrchestrator {
@@ -69,6 +73,14 @@ func NewPairOrchestrator() *PairOrchestrator {
 		History: []string{},
 		State:   StatePlanning,
 	}
+}
+
+func (p *PairOrchestrator) SetEventBus(bus interface {
+	EmitEvent(eventType string, source string, payload interface{})
+}) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.Bus = bus
 }
 
 func (p *PairOrchestrator) SetupSquad(members []SquadMember) {
@@ -197,7 +209,9 @@ func (p *PairOrchestrator) RunTask(ctx context.Context, task string) (*PairSessi
 }
 
 func (p *PairOrchestrator) executeTurn(ctx context.Context, role PairRole, prompt string) (string, error) {
-	p.mu.RLock()
+	p.mu.Lock()
+	p.CurrentRole = role
+	bus := p.Bus
 	var member *SquadMember
 	for i := range p.Squad {
 		if p.Squad[i].Role == role {
@@ -205,10 +219,19 @@ func (p *PairOrchestrator) executeTurn(ctx context.Context, role PairRole, promp
 			break
 		}
 	}
-	p.mu.RUnlock()
+	p.mu.Unlock()
 
 	if member == nil {
 		return "", fmt.Errorf("no member assigned to role: %s", role)
+	}
+
+	if bus != nil {
+		bus.EmitEvent("swarm:turn_start", "PairOrchestrator", map[string]interface{}{
+			"role":   string(role),
+			"name":   member.Name,
+			"model":  member.ModelID,
+			"prompt": prompt,
+		})
 	}
 
 	fmt.Printf("[PairOrchestrator] 👤 %s (%s) is thinking...\n", member.Name, member.Role)
@@ -236,7 +259,22 @@ SQUAD ROLES:
 
 	if err != nil {
 		fmt.Printf("[PairOrchestrator] ⚠️ Turn failed for %s: %v\n", member.Name, err)
+		if bus != nil {
+			bus.EmitEvent("swarm:turn_end", "PairOrchestrator", map[string]interface{}{
+				"role":    string(role),
+				"success": false,
+				"error":   err.Error(),
+			})
+		}
 		return "", err
+	}
+
+	if bus != nil {
+		bus.EmitEvent("swarm:turn_end", "PairOrchestrator", map[string]interface{}{
+			"role":    string(role),
+			"success": true,
+			"content": resp.Content,
+		})
 	}
 
 	return resp.Content, nil

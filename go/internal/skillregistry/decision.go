@@ -45,14 +45,35 @@ func NewSkillDecisionSystem(cfg SkillDecisionConfig, registry *SkillRegistry) *S
 	}
 }
 
-func (ds *SkillDecisionSystem) SearchSkills(ctx context.Context, query string) ([]SkillInfo, error) {
+func (ds *SkillDecisionSystem) SearchSkills(ctx context.Context, query string) ([]RankedSkill, error) {
 	return ds.registry.Search(query, ds.cfg.SoftCap), nil
+}
+
+// SearchAndLoad performs a ranked search and auto-loads high-confidence skills.
+func (ds *SkillDecisionSystem) SearchAndLoad(ctx context.Context, query string) ([]RankedSkill, error) {
+	ranked := ds.registry.Search(query, ds.cfg.SoftCap)
+	if len(ranked) == 0 {
+		return nil, nil
+	}
+
+	// Auto-load high confidence results
+	for _, r := range ranked {
+		if r.Score >= ds.cfg.HighConfidenceThreshold {
+			_ = ds.LoadSkill(r.ID)
+		}
+	}
+
+	return ranked, nil
 }
 
 func (ds *SkillDecisionSystem) LoadSkill(id string) error {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 
+	return ds.loadSkillLocked(id)
+}
+
+func (ds *SkillDecisionSystem) loadSkillLocked(id string) error {
 	id = strings.ToLower(id)
 	if sl, ok := ds.loaded[id]; ok {
 		sl.LastUsedAt = time.Now()
@@ -85,6 +106,9 @@ func (ds *SkillDecisionSystem) evictLRU() {
 	var oldestTime time.Time
 
 	for id, sl := range ds.loaded {
+		if sl.AlwaysOn {
+			continue
+		}
 		if oldest == "" || sl.LastUsedAt.Before(oldestTime) {
 			oldest = id
 			oldestTime = sl.LastUsedAt
@@ -93,6 +117,19 @@ func (ds *SkillDecisionSystem) evictLRU() {
 
 	if oldest != "" {
 		delete(ds.loaded, oldest)
+	}
+}
+
+// RefreshAlwaysOn loads all skills marked as AlwaysOn into the active set.
+func (ds *SkillDecisionSystem) RefreshAlwaysOn() {
+	all := ds.registry.List()
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	for _, s := range all {
+		if s.AlwaysOn {
+			_ = ds.loadSkillLocked(s.ID)
+		}
 	}
 }
 

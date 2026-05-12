@@ -49,6 +49,9 @@ type A2ABroker struct {
 	history          []A2AMessage
 	pendingResponses map[string]chan A2AMessage
 	logger           *A2ALogger
+	bus              interface {
+		EmitEvent(eventType string, source string, payload interface{})
+	}
 }
 
 func NewA2ABroker(logger *A2ALogger) *A2ABroker {
@@ -139,9 +142,27 @@ func (b *A2ABroker) UnregisterAgent(id string) {
 	}
 }
 
+func (b *A2ABroker) SetEventBus(bus interface {
+	EmitEvent(eventType string, source string, payload interface{})
+}) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.bus = bus
+}
+
 func (b *A2ABroker) RouteMessage(msg A2AMessage) {
 	if b.logger != nil {
 		b.logger.LogMessage(msg)
+	}
+
+	b.mu.RLock()
+	bus := b.bus
+	b.mu.RUnlock()
+
+	if bus != nil {
+		bus.EmitEvent("a2a:signal", "A2ABroker", map[string]interface{}{
+			"message": msg,
+		})
 	}
 
 	b.mu.Lock()

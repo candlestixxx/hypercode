@@ -26,6 +26,8 @@ type McpServerConfig struct {
 	URL         string            `json:"url,omitempty"`
 	Description string            `json:"description,omitempty"`
 	AlwaysOn    bool              `json:"alwaysOn,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	BearerToken string            `json:"bearerToken,omitempty"`
 }
 
 type McpConfig struct {
