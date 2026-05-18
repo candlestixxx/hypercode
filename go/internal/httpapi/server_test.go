@@ -423,6 +423,14 @@ func TestStartupStatusEndpoint(t *testing.T) {
 					},
 				},
 			})
+		case "/trpc/mcpServers.list":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"result": map[string]any{
+					"data": map[string]any{
+						"json": map[string]any{"servers": []any{}},
+					},
+				},
+			})
 		case "/trpc/startupStatus", "/trpc/session.list":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"result": map[string]any{
@@ -538,6 +546,14 @@ func TestSessionContextEndpoint(t *testing.T) {
 		case "/trpc/mesh.getCapabilities":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"result": map[string]any{"data": map[string]any{"json": map[string]any{}}},
+			})
+		case "/trpc/mcpServers.list":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"result": map[string]any{
+					"data": map[string]any{
+						"json": map[string]any{"servers": []any{}},
+					},
+				},
 			})
 		case "/trpc/startupStatus", "/trpc/session.list":
 			_ = json.NewEncoder(w).Encode(map[string]any{
@@ -691,6 +707,14 @@ func TestToolsContextEndpoint(t *testing.T) {
 		case "/trpc/mesh.getCapabilities":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"result": map[string]any{"data": map[string]any{"json": map[string]any{}}},
+			})
+		case "/trpc/mcpServers.list":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"result": map[string]any{
+					"data": map[string]any{
+						"json": map[string]any{"servers": []any{}},
+					},
+				},
 			})
 		case "/trpc/startupStatus", "/trpc/session.list":
 			_ = json.NewEncoder(w).Encode(map[string]any{
