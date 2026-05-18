@@ -532,7 +532,7 @@ func New(cfg config.Config, detector controlplane.ToolProvider) *Server {
 	server.contextHarvester = ctxharvester.NewContextHarvester(nil)
 	server.workspaceTracker = workspaces.NewWorkspaceTracker("")
 	server.processManager = processmanager.NewProcessManager()
-	server.healerService = healer.NewHealerService(nil, "") // LLM provider wired later
+	server.healerService = healer.NewHealerService(nil, "", nil, memoryVS) // LLM provider wired later
 	server.cacheService = cache.New(cache.CacheOptions{MaxSize: 500, DefaultTTL: 60000})
 	server.repoGraph = repograph.NewRepoGraphService(cfg.WorkspaceRoot)
 

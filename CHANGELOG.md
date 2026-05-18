@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.0.0-alpha.61] - 2026-05-17
+
+### Added
+- **Autonomous Healer Loop (The Immune System)**:
+  - Upgraded `go/internal/healer/healer.go` to implement the full `diagnose -> fix -> verify -> retry` autonomous cycle.
+  - Integrated `CodeExecutor` to perform native verification via `npx tsc`, `npx vitest`, and `go test`.
+  - Added multi-turn feedback loop support, allowing the LLM to refine fixes based on compiler/test output.
+- **L2 Vault Integration**:
+  - Wired Healer service to the `controlplane.MemoryVault` for persistent intelligence harvesting.
+  - Every heal attempt is now committed to the SQLite-based L2 Vault, enabling fleet-wide shared learning.
+- **Phase 5 Scoping**:
+  - Authored updated `VISION.md` and `ROADMAP.md` focusing on the Nexus Kernel (Hypervisor) and HyperCode (Product) brand distinction.
+
+### Fixed
+- Go Healer: Resolved double-escaping of `fmt.Sprintf` tokens in generated code.
+- Go Kernel: Fixed undefined interface references for `MemoryVault` in the healer package.
+
+# Changelog
+
 ## [1.0.0-alpha.60] - 2026-05-16
 
 ### Added
