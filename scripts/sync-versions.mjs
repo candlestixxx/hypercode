@@ -10,7 +10,11 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { globSync } from 'glob';
 
-const rootDir = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = join(__dirname, '..');
 
 // Read the canonical version
 const versionFile = `${rootDir}/VERSION`;
